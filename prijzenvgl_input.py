@@ -19,18 +19,16 @@ def selecteer_product():
             for j in i:
                 results_prod.append(j)
         conn.commit()
-        conn.close()
 
     except Exception as e:
         st.write(e)
+        conn.close()
 
     option = st.selectbox(
         'Welk ingredient?',
         results_prod)
 
-    st.write('Ingredient:', option)
-
-    st.write(results_prod)
+    voegtoe_prijswinkel(option)
 
 def voegtoe_product():
     with st.form("Voeg product toe"):
@@ -49,6 +47,34 @@ def voegtoe_product():
 
 def verwijder_product():
     st.write('tbc')
+
+def voegtoe_prijswinkel(product):
+    with st.form("Voeg winkel-prijs-datum toe:"):
+        winkel = st.text_input('Winkel', '')
+        prijs  = st.number_input('Prijs in €')
+        datum = st.date_input('Datum')
+        submitted = st.form_submit_button("Submit")
+        if submitted:
+            qry_selecteer_product = f'SELECT Product_ID FROM Product WHERE Product_Naam = "{product}"'
+            st.write(qry_selecteer_product)
+            try:
+                product_id = conn.execute(qry_selecteer_product)
+                conn.commit()
+                st.write(product_id)
+                qry_insert_prijswinkel = f"INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Winkel, Datum) VALUES('{product_id}', '{prijs}', '{winkel}', '{datum}')"
+                st.write(qry_insert_prijswinkel)
+                try:
+                    query = conn.execute(qry_insert_prijswinkel)
+                    conn.commit()
+                    conn.close()
+                    st.write(winkel, ' ',  prijs,  '€ ', datum 
+        , 'toegevoegd')
+                except Exception as e:
+                    conn.close()
+                    st.write('Probleem bij het invoegen van prijs en winkel bij product: ', e)
+            except Exception as e:
+                conn.close()
+                st.write('Probleem bij het selecteren van het product: ', e)
 
 page_names_to_funcs = {
     "Selecteer Product": selecteer_product,
