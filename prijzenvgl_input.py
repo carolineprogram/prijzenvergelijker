@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import db_functies as dbf
 
-conn = dbf.create_connection('prijzenvergelijker.db')
+conn = dbf.create_connection('../SQL/prijzenvergelijker.db')
 st.write(conn)
 
 def selecteer_product():
