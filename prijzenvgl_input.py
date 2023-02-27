@@ -19,16 +19,29 @@ def selecteer_product():
             for j in i:
                 results_prod.append(j)
         conn.commit()
+<<<<<<< HEAD
 
     except Exception as e:
         st.write(e)
         conn.close()
+=======
+        conn.close()
+
+    except Exception as e:
+        st.write(e)
+>>>>>>> 01ef0789e3b742cd6fc0168d73bf184b549ac59c
 
     option = st.selectbox(
         'Welk ingredient?',
         results_prod)
 
+<<<<<<< HEAD
     voegtoe_prijswinkel(option)
+=======
+    st.write('Ingredient:', option)
+
+    st.write(results_prod)
+>>>>>>> 01ef0789e3b742cd6fc0168d73bf184b549ac59c
 
 def voegtoe_product():
     with st.form("Voeg product toe"):
@@ -48,6 +61,7 @@ def voegtoe_product():
 def verwijder_product():
     st.write('tbc')
 
+<<<<<<< HEAD
 def voegtoe_prijswinkel(product):
     with st.form("Voeg winkel-prijs-datum toe:"):
         winkel = st.text_input('Winkel', '')
@@ -76,6 +90,8 @@ def voegtoe_prijswinkel(product):
                 conn.close()
                 st.write('Probleem bij het selecteren van het product: ', e)
 
+=======
+>>>>>>> 01ef0789e3b742cd6fc0168d73bf184b549ac59c
 page_names_to_funcs = {
     "Selecteer Product": selecteer_product,
     "Voeg Product toe": voegtoe_product,
