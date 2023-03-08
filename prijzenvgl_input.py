@@ -7,12 +7,9 @@ import matplotlib.dates as dates
 import os
 import db_functies as dbf
 
-<<<<<<< HEAD
-=======
 from numpy import random
 from datetime import datetime
 
->>>>>>> temp-brahnc
 conn = dbf.create_connection('../SQL/prijzenvergelijker.db')
 st.write(conn)
 fig, ax = plt.subplots()
@@ -21,30 +18,12 @@ def selecteer_product():
     qry1_select_product = "SELECT Product_ID, Product_Naam FROM Product"
     results_prod = []
     try:
-<<<<<<< HEAD
-        query = conn.execute(qry_select_ingredient)
-        results= query.fetchall()
-        for i in results:
-            for j in i:
-                results_prod.append(j)
-        conn.commit()
-<<<<<<< HEAD
-
-    except Exception as e:
-        st.write(e)
-        conn.close()
-=======
-        conn.close()
-
-=======
         qry1 = conn.execute(qry1_select_product)
         results1 = qry1.fetchall()
         for i in results1:
             results_prod.append(i[1])
->>>>>>> temp-brahnc
     except Exception as e:
         st.write(e)
->>>>>>> 01ef0789e3b742cd6fc0168d73bf184b549ac59c
 
     with st.form(key="Selecteer product", clear_on_submit=True):
         select_product = st.selectbox(
@@ -54,18 +33,8 @@ def selecteer_product():
             )
         submitted = st.form_submit_button("Submit")
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    voegtoe_prijswinkel(option)
-=======
-    st.write('Ingredient:', option)
-
-    st.write(results_prod)
->>>>>>> 01ef0789e3b742cd6fc0168d73bf184b549ac59c
-=======
     if submitted:
         try:
-            st.write("TODO: Hier komt grafiek met prijzen over de tijd en de huidige prijs in elke beschikbare winkel")
             qry2_select_product_id = f"SELECT Product_ID FROM Product WHERE Product_Naam = '{select_product}'"
             try:
                 qry2 = conn.execute(qry2_select_product_id)
@@ -102,8 +71,6 @@ def selecteer_product():
         
         except Exception as e:
             st.write(e)
-
->>>>>>> temp-brahnc
 
 def voegtoe_prijs_winkel():
 
@@ -191,7 +158,6 @@ def voegtoe_product():
 def verwijder_product():
     st.write('tbc')
 
-<<<<<<< HEAD
 def voegtoe_prijswinkel(product):
     with st.form("Voeg winkel-prijs-datum toe:"):
         winkel = st.text_input('Winkel', '')
@@ -220,8 +186,6 @@ def voegtoe_prijswinkel(product):
                 conn.close()
                 st.write('Probleem bij het selecteren van het product: ', e)
 
-=======
->>>>>>> 01ef0789e3b742cd6fc0168d73bf184b549ac59c
 page_names_to_funcs = {
     "Selecteer Product": selecteer_product,
     "Voeg Product toe": voegtoe_product,
