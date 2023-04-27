@@ -29,7 +29,6 @@ cryptography==3.4.8
 css-parser==1.0.7
 cssselect==1.1.0
 cssutils==1.0.2
-cupshelpers==1.0
 cycler==0.11.0
 Cython==0.29.28
 dbus-python==1.2.18
