@@ -12,7 +12,6 @@ beautifulsoup4==4.10.0
 beniget==0.4.1
 binaryornot==0.4.4
 blinker==1.4
-Brlapi==0.8.3
 Brotli==1.0.9
 cached-property==1.5.2
 cachetools==5.2.1
