@@ -24,5 +24,7 @@ rows = run_query("SELECT * from mytable;")
 # Print results.
 for row in rows:
     st.write(f"{row[0]} has a :{row[1]}:")
+connection.close()
 
 st.write("Nu staat er toch iets")
+    
