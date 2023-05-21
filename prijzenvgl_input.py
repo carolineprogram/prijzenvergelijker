@@ -1,26 +1,40 @@
-import sqlite3
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.dates as dates
-import os
-import db_functies as dbf
+import mysql.connector
 
 from numpy import random
 from datetime import datetime
 
-conn = dbf.create_connection('../SQL/prijzenvergelijker.db')
-st.write(conn)
-fig, ax = plt.subplots()
+
+# Initialize connection.
+# Uses st.cache_resource to only run once.
+#@st.cache_resource
+def get_connection():
+    return mysql.connector.connect(**st.secrets["mysql"])
+
+# Perform query.
+# Uses st.cache_data to only rerun when the query changes or after 10 min.
+@st.cache_data(ttl=600)
+def run_query(query, params=None):
+    with get_connection() as conn:
+        with conn.cursor(buffered=True) as cur:
+            if params:
+                cur.execute(query, params)
+            else:
+                cur.execute(query)
+        conn.commit()
+        return cur
+
+#fig, ax = plt.subplots()
 
 def selecteer_product():
     qry1_select_product = "SELECT Product_ID, Product_Naam FROM Product"
     results_prod = []
     try:
-        qry1 = conn.execute(qry1_select_product)
-        results1 = qry1.fetchall()
-        for i in results1:
+        results1 = run_query(qry1_select_product)
+        results1_set = results1.fetchall()
+        for i in results1_set:
             results_prod.append(i[1])
     except Exception as e:
         st.write(e)
@@ -35,45 +49,40 @@ def selecteer_product():
 
     if submitted:
         try:
-            qry2_select_product_id = f"SELECT Product_ID FROM Product WHERE Product_Naam = '{select_product}'"
-            try:
-                qry2 = conn.execute(qry2_select_product_id)
-                results2 = qry2.fetchall()
-                product_id = results2[0][0]
-                qry3_select_prijzen = f"SELECT Prijs, Winkel, Datum FROM Product_Prijs_Winkel WHERE Product_ID = {product_id}"
-                try:
-                    qry3 = conn.execute(qry3_select_prijzen)
-                    results3 = qry3.fetchall()
-#                    results3_sorted = sorted(results3, key=lambda product: product[2], reverse=True)
-                    winkels = set(w[1] for w in results3)
-                    df = pd.DataFrame(results3, columns=["Prijs", "Winkel", "Datum"])
-                    df['Datum'] = pd.to_datetime(df['Datum'], errors='ignore').dt.normalize()
-                    df.set_index('Datum').sort_index(ascending=True, inplace=True)
-                    df['Prijs'] = df['Prijs'].astype(float)
-                    df_last = df.groupby(['Winkel', 'Prijs']).Datum.max()
-                    st.write(df_last)
-                    colors = "bgrcmyk"
-                    for winkel in winkels:
-                        i = random.randint(len(colors))
-                        ax.plot(df.loc[df["Winkel"] == winkel, "Prijs"], c=colors[i], label=winkel)
-                    ax.set_xticks(df["Datum"])
-                    ax.set_xticklabels(df["Datum"], rotation=45)
-                    ax.set_xlim(df["Datum"].min(), df["Datum"].max())
-                    ax.set_xlabel("Datum")
-                    ax.set_ylabel("Prijs")
-                    ax.set_ylim(0, df["Prijs"].max())
-                    ax.legend()
-                    st.pyplot(fig)
-                except Exception as e:
-                    st.write(e)
-            except Exception as e:
-                st.write(e)
-        
+            qry2_select_product_id = "SELECT Product_ID FROM Product WHERE Product_Naam = %s"
+            results2 = run_query(qry2_select_product_id, (select_product,))
+            results2_set =  results2.fetchone()
+            product_id = results2_set[0]
+            qry3_select_prijzen = "SELECT Prijs, Winkel, Datum FROM Product_Prijs_Winkel WHERE Product_ID = %s"
+            results3 = run_query(qry3_select_prijzen, (product_id,))
+            results3_set = results3.fetchone()
+            
+            winkels = set(w[1] for w in results3)
+            df = pd.DataFrame(results3, columns=["Prijs", "Winkel", "Datum"])
+            df['Datum'] = pd.to_datetime(df['Datum'], errors='ignore').dt.normalize()
+            df.set_index('Datum').sort_index(ascending=True, inplace=True)
+            df['Prijs'] = df['Prijs'].astype(float)
+            df_last = df.groupby(['Winkel', 'Prijs']).Datum.max()
+            st.write(df_last)
+
+            fig, ax = plt.subplots()
+            colors = "bgrcmyk"
+            for winkel in winkels:
+                i = random.randint(len(colors))
+                ax.plot(df.loc[df["Winkel"] == winkel, "Prijs"], c=colors[i], label=winkel)
+
+            ax.set_xticks(df["Datum"])
+            ax.set_xticklabels(df["Datum"], rotation=45)
+            ax.set_xlim(df["Datum"].min(), df["Datum"].max())
+            ax.set_xlabel("Datum")
+            ax.set_ylabel("Prijs")
+            ax.set_ylim(0, df["Prijs"].max())
+            ax.legend()
+            st.pyplot(fig)
         except Exception as e:
             st.write(e)
-
+    
 def voegtoe_prijs_winkel():
-
     qry_select_ingredient = "SELECT Product_Naam FROM Product"
     qry_select_winkel = "SELECT DISTINCT Winkel FROM Product_Prijs_Winkel"
     results_prod = []
@@ -81,18 +90,15 @@ def voegtoe_prijs_winkel():
     winkel_andere = "Andere winkel..."
 
     try:
-        qry_select1 = conn.execute(qry_select_ingredient)
-        results1= qry_select1.fetchall()
+        results1 = run_query(qry_select_ingredient)
         for i in results1:
             for j in i:
                 results_prod.append(j)
-        qry_select2 = conn.execute(qry_select_winkel)
-        results2= qry_select2.fetchall()
+        qry_select2 = run_query(qry_select_winkel)
         for i in results2:
             for j in i:
                 results_winkel.append(j)
         results_winkel.append(winkel_andere)
-        conn.commit()
     
     except Exception as e:
         st.write(e)
@@ -113,14 +119,12 @@ def voegtoe_prijs_winkel():
 
     # Create selectbox
     with placeholder_for_select_winkel:
-        winkel = st.selectbox("Winkel: ",
-        options=results_winkel
-                            )
+        winkel = st.selectbox("Winkel: ", options=results_winkel)
+        
     # Create text input voor alternatieve winkel
     with placeholder_for_text_andere_winkel:
         if winkel == winkel_andere:
             winkel_andere_optie = st.text_input(winkel_andere)
-                              
        
     if submitted:
         try:
@@ -128,33 +132,27 @@ def voegtoe_prijs_winkel():
                     winkel_insert = winkel_andere_optie
             else:
                 winkel_insert = winkel
-            qry_select_product_id = f"SELECT Product_ID FROM Product WHERE Product_Naam = '{select_product}'"
-            qry_select = conn.execute(qry_select_product_id)
-            product_id_array = qry_select.fetchall()
-            product_id = product_id_array[0][0]
-            st.write(product_id)
-            qry_insert_winkel_prijs = f"INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Winkel, Datum) VALUES ('{product_id}', '{prijs}', '{winkel_insert}', '{datum_prijs}')"
-            query_insert = conn.execute(qry_insert_winkel_prijs)
-            conn.commit()
-            conn.close()
+            qry_select_product_id = "SELECT Product_ID FROM Product WHERE Product_Naam = %s"
+            results_select = run_query(qry_select_product_id, (select_product,))
+            product_id = results_select.fetchone()[0]
+            qry_insert_winkel_prijs = "INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Winkel, Datum) VALUES (%s, %s, %s, %s)"
+            query_insert = run_query(qry_insert_winkel_prijs, (product_id, prijs, winkel_insert, datum_prijs))
         except Exception as e:
             st.write(e)
- 
+
 def voegtoe_product():
     with st.form("Voeg product toe"):
         textbox = st.text_input('Product', '')
         submitted = st.form_submit_button("Submit")
         if submitted:
-            qry_insert_ingredient = f"INSERT INTO Product (Product_Naam) VALUES ('{textbox}')"
-            st.write(qry_insert_ingredient)
+            qry_insert_ingredient = "INSERT INTO Product (Product_Naam) VALUES (%s)"
+            st.write(textbox)
             try:
-                query = conn.execute(qry_insert_ingredient)
-                conn.commit()
-                conn.close()
-                st.write(textbox, 'toegvoegd')
+                results = run_query(qry_insert_ingredient, (textbox,))
+                st.write(textbox, 'toegevoegd')
             except Exception as e:
                 st.write(e)
-
+        
 def verwijder_product():
     st.write('tbc')
 
@@ -165,27 +163,18 @@ def voegtoe_prijswinkel(product):
         datum = st.date_input('Datum')
         submitted = st.form_submit_button("Submit")
         if submitted:
-            qry_selecteer_product = f'SELECT Product_ID FROM Product WHERE Product_Naam = "{product}"'
-            st.write(qry_selecteer_product)
+            qry_selecteer_product = "SELECT Product_ID FROM Product WHERE Product_Naam = %s"
             try:
-                product_id = conn.execute(qry_selecteer_product)
-                conn.commit()
-                st.write(product_id)
-                qry_insert_prijswinkel = f"INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Winkel, Datum) VALUES('{product_id}', '{prijs}', '{winkel}', '{datum}')"
-                st.write(qry_insert_prijswinkel)
+                product_id = run_query(qry_selecteer_product, (product,))
+                qry_insert_prijswinkel = "INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Winkel, Datum) VALUES(%s, %s, %s, %s)"
                 try:
-                    query = conn.execute(qry_insert_prijswinkel)
-                    conn.commit()
-                    conn.close()
-                    st.write(winkel, ' ',  prijs,  '€ ', datum 
-        , 'toegevoegd')
+                    query = run_query(qry_insert_prijswinkel, (product_id, prijs, winkel, datum))
+                    st.write(winkel, ' ', prijs, '€ ', datum, 'toegevoegd')
                 except Exception as e:
-                    conn.close()
                     st.write('Probleem bij het invoegen van prijs en winkel bij product: ', e)
             except Exception as e:
-                conn.close()
                 st.write('Probleem bij het selecteren van het product: ', e)
-
+            
 page_names_to_funcs = {
     "Selecteer Product": selecteer_product,
     "Voeg Product toe": voegtoe_product,
