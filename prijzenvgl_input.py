@@ -15,7 +15,7 @@ def get_connection():
 
 # Perform query.
 # Uses st.cache_data to only rerun when the query changes or after 10 min.
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=10)
 def run_query(query, params=None):
     with get_connection() as conn:
         with conn.cursor(buffered=True) as cur:
@@ -23,13 +23,14 @@ def run_query(query, params=None):
                 cur.execute(query, params)
             else:
                 cur.execute(query)
-        conn.commit()
+            conn.commit()
         return cur
+
 
 #fig, ax = plt.subplots()
 
 def selecteer_product():
-    qry1_select_product = "SELECT Product_ID, Product_Naam FROM Product"
+    qry1_select_product = "SELECT Product_ID, Product_Naam FROM Product ORDER BY Product_Naam"
     results_prod = []
     try:
         results1 = run_query(qry1_select_product)
@@ -51,13 +52,11 @@ def selecteer_product():
         try:
             qry2_select_product_id = "SELECT Product_ID FROM Product WHERE Product_Naam = %s"
             results2 = run_query(qry2_select_product_id, (select_product,))
-            results2_set =  results2.fetchone()
-            product_id = results2_set[0]
+            product_id = results2.fetchone()[0]
             qry3_select_prijzen = "SELECT Prijs, Winkel, Datum FROM Product_Prijs_Winkel WHERE Product_ID = %s"
             results3 = run_query(qry3_select_prijzen, (product_id,))
-            results3_set = results3.fetchone()
             
-            winkels = set(w[1] for w in results3)
+            winkels = set(w[1] for w in results3.fetchall())
             df = pd.DataFrame(results3, columns=["Prijs", "Winkel", "Datum"])
             df['Datum'] = pd.to_datetime(df['Datum'], errors='ignore').dt.normalize()
             df.set_index('Datum').sort_index(ascending=True, inplace=True)
@@ -83,21 +82,20 @@ def selecteer_product():
             st.write(e)
     
 def voegtoe_prijs_winkel():
-    qry_select_ingredient = "SELECT Product_Naam FROM Product"
-    qry_select_winkel = "SELECT DISTINCT Winkel FROM Product_Prijs_Winkel"
+    qry_select_ingredient = "SELECT Product_Naam FROM Product ORDER BY Product_Naam"
+    qry_select_winkel = "SELECT DISTINCT Winkel FROM Product_Prijs_Winkel ORDER BY Winkel"
     results_prod = []
     results_winkel = []
     winkel_andere = "Andere winkel..."
 
     try:
         results1 = run_query(qry_select_ingredient)
-        for i in results1:
-            for j in i:
-                results_prod.append(j)
-        qry_select2 = run_query(qry_select_winkel)
-        for i in results2:
-            for j in i:
-                results_winkel.append(j)
+        for i in results1.fetchall():
+            results_prod.append(i[0])
+            st.write(i)
+        results2 = run_query(qry_select_winkel)
+        for j in results2.fetchall():
+            results_winkel.append(j[0])
         results_winkel.append(winkel_andere)
     
     except Exception as e:
@@ -115,6 +113,7 @@ def voegtoe_prijs_winkel():
 
         prijs = st.number_input("Prijs (€)")
         datum_prijs = st.date_input("Datum van prijs: ")
+        datum_prijs = datum_prijs.strftime("%Y-%m-%d")        
         submitted = st.form_submit_button("Submit")
 
     # Create selectbox
@@ -135,20 +134,44 @@ def voegtoe_prijs_winkel():
             qry_select_product_id = "SELECT Product_ID FROM Product WHERE Product_Naam = %s"
             results_select = run_query(qry_select_product_id, (select_product,))
             product_id = results_select.fetchone()[0]
-            qry_insert_winkel_prijs = "INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Winkel, Datum) VALUES (%s, %s, %s, %s)"
-            query_insert = run_query(qry_insert_winkel_prijs, (product_id, prijs, winkel_insert, datum_prijs))
+            try:
+                qry_insert_winkel_prijs = "INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Winkel, Datum) VALUES (%s, %s, %s, %s)"
+                query_insert = run_query(qry_insert_winkel_prijs, (product_id, prijs, winkel_insert, datum_prijs))
+            except Exception as e:
+                st.write(e)
         except Exception as e:
             st.write(e)
 
+##def voegtoe_prijswinkel(product):
+##    with st.form("Voeg winkel-prijs-datum toe:"):
+##        winkel = st.text_input('Winkel', '')
+##        prijs  = st.number_input('Prijs in €')
+##        datum = st.date_input('Datum')
+##        submitted = st.form_submit_button("Submit")
+##        if submitted:
+##            qry_selecteer_product = "SELECT Product_ID FROM Product WHERE Product_Naam = %s"
+##            try:
+##                st.write('try 1')
+##                product_id = run_query(qry_selecteer_product, (product,))
+##                qry_insert_prijswinkel = "INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Winkel, Datum) VALUES(%s, %s, %s, %s)"
+##                try:
+##                    st.write('try 2')
+##                    query = run_query(qry_insert_prijswinkel, (product_id, prijs, winkel, datum))
+##                    st.write(winkel, ' ', prijs, '€ ', datum, 'toegevoegd')
+##                except Exception as e:
+##                    st.write('Probleem bij het invoegen van prijs en winkel bij product: ', e)
+##            except Exception as e:
+##                st.write('Probleem bij het selecteren van het product: ', e)
+
+
 def voegtoe_product():
-    with st.form("Voeg product toe"):
+    with st.form(key="Voeg product toe",  clear_on_submit=True):
         textbox = st.text_input('Product', '')
         submitted = st.form_submit_button("Submit")
         if submitted:
             qry_insert_ingredient = "INSERT INTO Product (Product_Naam) VALUES (%s)"
-            st.write(textbox)
             try:
-                results = run_query(qry_insert_ingredient, (textbox,))
+                query = run_query(qry_insert_ingredient, (textbox,))
                 st.write(textbox, 'toegevoegd')
             except Exception as e:
                 st.write(e)
@@ -156,24 +179,6 @@ def voegtoe_product():
 def verwijder_product():
     st.write('tbc')
 
-def voegtoe_prijswinkel(product):
-    with st.form("Voeg winkel-prijs-datum toe:"):
-        winkel = st.text_input('Winkel', '')
-        prijs  = st.number_input('Prijs in €')
-        datum = st.date_input('Datum')
-        submitted = st.form_submit_button("Submit")
-        if submitted:
-            qry_selecteer_product = "SELECT Product_ID FROM Product WHERE Product_Naam = %s"
-            try:
-                product_id = run_query(qry_selecteer_product, (product,))
-                qry_insert_prijswinkel = "INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Winkel, Datum) VALUES(%s, %s, %s, %s)"
-                try:
-                    query = run_query(qry_insert_prijswinkel, (product_id, prijs, winkel, datum))
-                    st.write(winkel, ' ', prijs, '€ ', datum, 'toegevoegd')
-                except Exception as e:
-                    st.write('Probleem bij het invoegen van prijs en winkel bij product: ', e)
-            except Exception as e:
-                st.write('Probleem bij het selecteren van het product: ', e)
             
 page_names_to_funcs = {
     "Selecteer Product": selecteer_product,
