@@ -1,11 +1,17 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import numpy as np
+
 import mysql.connector
 
 from numpy import random
 from datetime import datetime
 
+# Handle date time conversions between pandas and matplotlib
+#from pandas.plotting import register_matplotlib_converters
+#register_matplotlib_converters()
 
 # Initialize connection.
 # Uses st.cache_resource to only run once.
@@ -26,8 +32,6 @@ def run_query(query, params=None):
             conn.commit()
         return cur
 
-
-#fig, ax = plt.subplots()
 
 def selecteer_product():
     qry1_select_product = "SELECT Product_ID, Product_Naam FROM Product ORDER BY Product_Naam"
@@ -55,27 +59,61 @@ def selecteer_product():
             product_id = results2.fetchone()[0]
             qry3_select_prijzen = "SELECT Prijs, Winkel, Datum FROM Product_Prijs_Winkel WHERE Product_ID = %s"
             results3 = run_query(qry3_select_prijzen, (product_id,))
-            
-            winkels = set(w[1] for w in results3.fetchall())
-            df = pd.DataFrame(results3, columns=["Prijs", "Winkel", "Datum"])
-            df['Datum'] = pd.to_datetime(df['Datum'], errors='ignore').dt.normalize()
+            results3_set = results3.fetchall()
+            winkels = set(w[1] for w in results3_set)
+            df = pd.DataFrame(results3_set, columns=["Prijs", "Winkel", "Datum"])
+            st.write(df)
+            df['Datum'] = pd.to_datetime(df['Datum'], errors='ignore').dt.date
+            #df['Datum'] = df['Datum'].apply(mdates.date2num)
+            #date_form = DateFormatter("%d-%m-%Y")
             df.set_index('Datum').sort_index(ascending=True, inplace=True)
             df['Prijs'] = df['Prijs'].astype(float)
-            df_last = df.groupby(['Winkel', 'Prijs']).Datum.max()
-            st.write(df_last)
+            #df_last = df.groupby(['Winkel', 'Prijs']).Datum.max()
+            #st.write(df_last)
+
+            years = mdates.YearLocator()   # every year
+            months = mdates.MonthLocator()  # every month
+            days = mdates.DayLocator()
+            years_fmt = mdates.DateFormatter('%m/%Y')
 
             fig, ax = plt.subplots()
             colors = "bgrcmyk"
             for winkel in winkels:
                 i = random.randint(len(colors))
-                ax.plot(df.loc[df["Winkel"] == winkel, "Prijs"], c=colors[i], label=winkel)
+                ax.plot(df.loc[df["Winkel"] == winkel, "Prijs"], 'ro', c=colors[i], label=winkel)
 
-            ax.set_xticks(df["Datum"])
-            ax.set_xticklabels(df["Datum"], rotation=45)
-            ax.set_xlim(df["Datum"].min(), df["Datum"].max())
-            ax.set_xlabel("Datum")
-            ax.set_ylabel("Prijs")
-            ax.set_ylim(0, df["Prijs"].max())
+            # format the ticks
+            ax.xaxis.set_major_locator(months)
+            ax.xaxis.set_major_formatter(years_fmt)
+            ax.xaxis.set_minor_locator(days)
+
+            # round to nearest years.
+            datemin = np.datetime64(df['Datum'].min())
+            datemax = np.datetime64(df['Datum'].max())
+            ax.set_xlim(datemin, datemax)
+
+            # format the coords message box
+            ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
+            ax.format_ydata = lambda x: '$%1,2f' % x  # format the price.
+            ax.grid(False)
+
+            # rotates and right aligns the x labels, and moves the bottom of the
+            # axes up to make room for them
+            fig.autofmt_xdate()
+
+            #ax.set_xticks(df["Datum"])
+            #ax.set_xticklabels(df["Datum"], rotation=45)
+            # Convert x-axis limits back to date format
+##            xmin = df['Datum'].min()
+##            xmax = df['Datum'].max()
+##            ax.xaxis.set_major_formatter(date_form)
+##            ax.xaxis.set_minor_formatter(date_form)
+##            ax.set_xlim(xmin, xmax)
+##            ax.xaxis.get_majorticklabels()
+##            ax.set_xlabel("Datum")
+##            ax.set_ylabel("Prijs")
+##            ax.set_ylim(0, df["Prijs"].max())
+##            ax.xaxis.set_minor_locator(mdates.WeekLocator())
             ax.legend()
             st.pyplot(fig)
         except Exception as e:
@@ -92,7 +130,6 @@ def voegtoe_prijs_winkel():
         results1 = run_query(qry_select_ingredient)
         for i in results1.fetchall():
             results_prod.append(i[0])
-            st.write(i)
         results2 = run_query(qry_select_winkel)
         for j in results2.fetchall():
             results_winkel.append(j[0])

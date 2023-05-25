@@ -5,6 +5,5 @@ numpy==1.21.5
 apsw==3.36.0.post1
 kivy-ios==2022.7.19
 pytz-deprecation-shim==0.1.0.post0
-numpy==1.21.5
 matplotlib==3.5.1
 matplotlib-inline==0.1.3
