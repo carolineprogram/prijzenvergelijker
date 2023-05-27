@@ -24,6 +24,7 @@ def get_connection():
 @st.cache_data(ttl=10)
 def run_query(query, params=None):
     with get_connection() as conn:
+        conn.autocommit = True  #mogelijks is dit de default en overbodig
         with conn.cursor(buffered=True) as cur:
             if params:
                 cur.execute(query, params)
