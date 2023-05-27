@@ -55,12 +55,14 @@ def selecteer_product():
         try:
             qry2_select_product_id = "SELECT Product_ID FROM Product WHERE Product_Naam = %s"
             results2 = run_query(qry2_select_product_id, (select_product,))
-            product_id = results2[0]
+            st.write(results2)
+            product_id = results2[0][0]
             qry3_select_prijzen = "SELECT Prijs, Winkel, Datum FROM Product_Prijs_Winkel WHERE Product_ID = %s"
             results3 = run_query(qry3_select_prijzen, (product_id,))
+            st.write(results3)
             #results3_set = results3.fetchall()
             winkels = set(w[1] for w in results3)
-            df = pd.DataFrame(results3_set, columns=["Prijs", "Winkel", "Datum"])
+            df = pd.DataFrame(results3, columns=["Prijs", "Winkel", "Datum"])
             st.write(df)
             df['Datum'] = pd.to_datetime(df['Datum'], errors='ignore').dt.date
             #df['Datum'] = df['Datum'].apply(mdates.date2num)
@@ -70,7 +72,7 @@ def selecteer_product():
             #df_last = df.groupby(['Winkel', 'Prijs']).Datum.max()
             #st.write(df_last)
 
-            years = mdates.YearLocator()   # every year
+##            years = mdates.YearLocator()   # every year
             months = mdates.MonthLocator()  # every month
             days = mdates.DayLocator()
             years_fmt = mdates.DateFormatter('%m/%Y')
