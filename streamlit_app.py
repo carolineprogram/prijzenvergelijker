@@ -3,13 +3,34 @@
 import streamlit as st
 import mysql.connector
 
+### Initialize connection.
+### Uses st.cache_resource to only run once.
+##@st.cache_resource
+##def init_connection():
+##    return mysql.connector.connect(**st.secrets["mysql"])
+##
+##conn = init_connection()
+##
+
+
 # Initialize connection.
 # Uses st.cache_resource to only run once.
-@st.cache_resource
-def init_connection():
+#@st.cache_resource
+def get_connection():
     return mysql.connector.connect(**st.secrets["mysql"])
 
-conn = init_connection()
+# Perform query.
+# Uses st.cache_data to only rerun when the query changes or after 10 s.
+@st.cache_data(ttl=10)
+def run_query(query, params=None):
+    with get_connection() as conn:
+        with conn.cursor(buffered=True) as cur:
+            if params:
+                cur.execute(query, params)
+            else:
+                cur.execute(query)
+            conn.commit()
+        return cur
 
 # Perform query.
 # Uses st.cache_data to only rerun when the query changes or after 10 min.
