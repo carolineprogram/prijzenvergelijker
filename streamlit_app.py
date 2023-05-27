@@ -29,16 +29,15 @@ def run_query(query, params=None):
                 cur.execute(query, params)
             else:
                 cur.execute(query)
-            conn.commit()
-        return cur
-
-# Perform query.
-# Uses st.cache_data to only rerun when the query changes or after 10 min.
-@st.cache_data(ttl=600)
-def run_query(query):
-    with conn.cursor() as cur:
-        cur.execute(query)
         return cur.fetchall()
+
+### Perform query.
+### Uses st.cache_data to only rerun when the query changes or after 10 min.
+##@st.cache_data(ttl=600)
+##def run_query(query):
+##    with conn.cursor() as cur:
+##        cur.execute(query)
+##        return cur.fetchall()
 
 rows = run_query("SELECT * from mytable;")
 
