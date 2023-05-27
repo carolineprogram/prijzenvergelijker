@@ -24,14 +24,12 @@ def get_connection():
 @st.cache_data(ttl=10)
 def run_query(query, params=None):
     with get_connection() as conn:
-        conn.autocommit = True  #mogelijks is dit de default en overbodig
         with conn.cursor(buffered=True) as cur:
             if params:
                 cur.execute(query, params)
             else:
                 cur.execute(query)
-#            conn.commit()
-        return cur
+        return cur.fetchall()
 
 
 def selecteer_product():
@@ -39,8 +37,8 @@ def selecteer_product():
     results_prod = []
     try:
         results1 = run_query(qry1_select_product)
-        results1_set = results1.fetchall()
-        for i in results1_set:
+#        results1_set = results1.fetchall()
+        for i in results1:
             results_prod.append(i[1])
     except Exception as e:
         st.write(e)
@@ -57,11 +55,11 @@ def selecteer_product():
         try:
             qry2_select_product_id = "SELECT Product_ID FROM Product WHERE Product_Naam = %s"
             results2 = run_query(qry2_select_product_id, (select_product,))
-            product_id = results2.fetchone()[0]
+            product_id = results2[0]
             qry3_select_prijzen = "SELECT Prijs, Winkel, Datum FROM Product_Prijs_Winkel WHERE Product_ID = %s"
             results3 = run_query(qry3_select_prijzen, (product_id,))
-            results3_set = results3.fetchall()
-            winkels = set(w[1] for w in results3_set)
+            #results3_set = results3.fetchall()
+            winkels = set(w[1] for w in results3)
             df = pd.DataFrame(results3_set, columns=["Prijs", "Winkel", "Datum"])
             st.write(df)
             df['Datum'] = pd.to_datetime(df['Datum'], errors='ignore').dt.date
