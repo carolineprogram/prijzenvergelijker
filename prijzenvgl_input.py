@@ -20,7 +20,7 @@ def get_connection():
     return mysql.connector.connect(**st.secrets["mysql"])
 
 # Perform query.
-# Uses st.cache_data to only rerun when the query changes or after 10 min.
+# Uses st.cache_data to only rerun when the query changes or after 10 s.
 @st.cache_data(ttl=10)
 def run_query(query, params=None):
     with get_connection() as conn:
@@ -29,7 +29,7 @@ def run_query(query, params=None):
                 cur.execute(query, params)
             else:
                 cur.execute(query)
-            conn.commit()
+#            conn.commit()
         return cur
 
 
