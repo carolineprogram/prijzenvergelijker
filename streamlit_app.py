@@ -39,7 +39,9 @@ def run_query(query, params=None):
 ##        cur.execute(query)
 ##        return cur.fetchall()
 
-rows = run_query("SELECT * from mytable;")
+#rows = run_query("SELECT * from mytable;")
+rows = run_query("SELECT Product_ID, Product_Naam FROM Product ORDER BY Product_Naam;")
+    
 
 # Print results.
 for row in rows:
