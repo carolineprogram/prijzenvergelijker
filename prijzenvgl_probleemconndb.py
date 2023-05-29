@@ -2,7 +2,7 @@
 
 import streamlit as st
 import mysql.connector
-#import pandas as pd
+
 
 # Initialize connection.
 # Uses st.cache_resource to only run once.
@@ -21,6 +21,7 @@ def run_query(query, params=None):
             else:
                 cur.execute(query)
         return cur.fetchall()
+
 
 qry1_select_product = "SELECT Product_ID, Product_Naam FROM Product ORDER BY Product_Naam"
 results_prod = []
