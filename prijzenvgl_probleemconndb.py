@@ -24,13 +24,10 @@ def run_query(query, params=None):
 
 qry1_select_product = "SELECT Product_ID, Product_Naam FROM Product ORDER BY Product_Naam"
 results_prod = []
-try:
-    results1 = run_query(qry1_select_product)
+results1 = run_query(qry1_select_product)
     for i in results1:
         results_prod.append(i[1])
         st.write(i)
-except Exception as e:
-    st.write(e)
 
 ##with st.form(key="Selecteer product", clear_on_submit=True):
 ##    select_product = st.selectbox(
