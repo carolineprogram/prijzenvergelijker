@@ -24,9 +24,7 @@ def get_connection():
 @st.cache_data(ttl=10)
 def run_query(query, params=None):
     with get_connection() as conn:
-        st.write(conn)
         with conn.cursor(buffered=True) as cur:
-            st.write(cur)
             if params:
                 cur.execute(query, params)
             else:
