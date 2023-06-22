@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter
 import matplotlib.dates as mdates
 import numpy as np
+import seaborn as sns
+import plotly.graph_objs as go
+import plotly.express as px
 
 import mysql.connector
 
@@ -18,7 +21,7 @@ from datetime import datetime
 # Uses st.cache_resource to only run once.
 #@st.cache_resource
 def get_connection():
-    return mysql.connector.connect(**st.secrets["mysql"])
+        return mysql.connector.connect(**st.secrets["mysql"])
 
 # Perform query.
 # Uses st.cache_data to only rerun when the query changes or after 10 s.
@@ -58,62 +61,59 @@ def selecteer_product():
             qry2_select_product_id = "SELECT Product_ID FROM Product WHERE Product_Naam = %s"
             results2 = run_query(qry2_select_product_id, (select_product,)).fetchall()
             product_id = results2[0][0]
-            qry3_select_prijzen = "SELECT Prijs, Winkel, Datum FROM Product_Prijs_Winkel WHERE Product_ID = %s"
+            qry3_select_prijzen = "SELECT Prijs, Prijs_eenheid, Bio, Voor_gewicht, Type, Winkel, Datum FROM Product_Prijs_Winkel WHERE Product_ID = %s"
             results3 = run_query(qry3_select_prijzen, (product_id,)).fetchall()
-            winkels = set(w[1] for w in results3)
-            df = pd.DataFrame(results3, columns=["Prijs", "Winkel", "Datum"])
+            #winkels = set(w[1] for w in results3)
+            df = pd.DataFrame(results3, columns=["Prijs", "Eenheid", "Bio", "Voor_gewicht", "Type", "Winkel", "Datum"])
             df['Datum'] = pd.to_datetime(df['Datum'], errors='ignore')
             df = df.sort_values(by='Datum')
             df.set_index('Datum', inplace=True)
             df['Prijs'] = df['Prijs'].astype(float)
+            df_simple = df.copy()
+            if len(df_simple["Voor_gewicht"]) > 0:
+                df_simple["Type + Gewicht"] = df["Type"] + ' - ' + df["Voor_gewicht"] + ' g'
+            else:
+                df_simple["Type + Gewicht"] = df["Type"] + ' - ' + df["Voor_gewicht"]
             #Zoek meest recente prijs per winkel
-            df_laatste_prijs = df.groupby('Winkel').tail(1)
+            df_laatste_prijs = df_simple.groupby(['Winkel', 'Eenheid', 'Bio', 'Type + Gewicht']).tail(1)
             st.write(df_laatste_prijs)
 
-            fig, ax = plt.subplots()
             colors = "bgrcmyk"
-            for winkel in winkels:
-                i = random.randint(0, len(colors)-1)    # Generate a random index for colors
-                ax.plot(df.loc[df["Winkel"] == winkel, "Prijs"], 'ro', c=colors[i], label=winkel, linestyle='--')
 
-            # format the ticks
-            #years = mdates.YearLocator()   # every year
-            months = mdates.MonthLocator()  # every month
-            days = mdates.DayLocator()
-            years_fmt = mdates.DateFormatter('%m/%Y')
+            winkels_unique = df["Winkel"].unique()
+            eenheid_unique = df["Eenheid"].unique()
+            sns.set_style("darkgrid")
 
-            ax.xaxis.set_major_locator(months)
-##            ax.xaxis.set_major_locator(mdates.AutoDateLocator())
-            ax.xaxis.set_major_formatter(years_fmt)
-            #voor kleine streepjes tussen grote streepjes
-#            ax.xaxis.set_minor_locator(days)
-
-            # Format the x-axis as dates
-##            ax.xaxis.set_major_formatter(date_formatter)
-##
-##            ax.set_xticks(df.index)
-            ax.set_xticklabels(df.index, rotation=45)
-##            # round to nearest years.
-##            datemin = np.datetime64(df['Datum'].min())
-##            datemax = np.datetime64(df['Datum'].max())
-
-            # Convert x-axis limits back to date format
-#            ax.set_xlim(datemin, datemax)
-#            ax.xaxis.get_majorticklabels()
-            # rotates and right aligns the x labels, and moves the bottom of the
-            # axes up to make room for them
-            fig.autofmt_xdate()
-            ax.set_xlabel("Datum")
-##            
-            # format the coords message box
-            ax.format_ydata = lambda x: '$%1,2f' % x  # format the price.
-            ax.grid(False)
-
-##            ax.set_ylabel("Prijs")
-##            ax.set_ylim(0, df["Prijs"].max())
-            ax.legend()
+            # Divide the available space into multiple columns
+            columns = st.columns(len(eenheid_unique))
+            for i, x in enumerate(eenheid_unique):
+                fig, ax  = plt.subplots()
+                data_subset = df_simple[df_simple["Eenheid"] == x]
+                
+                g = sns.scatterplot(
+                    data = data_subset,
+                    x="Datum",
+                    y="Prijs",
+                    hue='Winkel',
+                    legend='full',
+                    marker='o',
+                    s=100,
+                    ax=ax
+                )
+                if len(data_subset) > 1:
+                    g = sns.lineplot(
+                        data=data_subset,
+                        x="Datum",
+                        y="Prijs",
+                        hue='Winkel',
+                        legend='full',
+                        ax=ax                        
+                    )
+                    columns[i].pyplot(fig)
+            fig = g.figure
+            g.set_xticklabels(g.get_xticklabels(), rotation = 30)
             st.pyplot(fig)
-            st.write(df)
+            
         except Exception as e:
             st.write(e)
     
@@ -151,6 +151,8 @@ def voegtoe_prijs_winkel():
         prijs = st.number_input("Prijs (€)")
         prijs_eenheid = st.text_input("Eenheid")
         bio = st.checkbox('BIO')
+        voor_gewicht  =st.text_input('Specifiek voor volgend gewicht')
+        product_type = st.text_input('nog iets specifiek? (eigenlijk vooral voor Pitpit, zoals bv Europese pompoenpitten vs niet-Europese')
         datum_prijs = st.date_input("Datum van prijs: ")
         datum_prijs = datum_prijs.strftime("%Y-%m-%d")
         submitted = st.form_submit_button("Submit")
@@ -175,8 +177,8 @@ def voegtoe_prijs_winkel():
             product_id = results_select[0]
             
             try:
-                qry_insert_winkel_prijs = "INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Prijs_eenheid, Bio, Winkel, Datum) VALUES (%s, %s, %s, %s, %s, %s)"
-                run_query(qry_insert_winkel_prijs, (product_id, prijs, prijs_eenheid, bio, winkel_insert, datum_prijs))
+                qry_insert_winkel_prijs = "INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Prijs_eenheid, Bio, Voor_gewicht, Type, Winkel, Datum) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+                run_query(qry_insert_winkel_prijs, (product_id, prijs, prijs_eenheid, bio, voor_gewicht, product_type, winkel_insert, datum_prijs))
             except Exception as e:
                 st.write(e)
         except Exception as e:
@@ -186,11 +188,12 @@ def voegtoe_product():
     with st.form(key="Voeg product toe",  clear_on_submit=True):
         textbox = st.text_input('Product', '')
         bulkkorting_content = st.checkbox('Bulkkorting Content')
+        pitpit_url = st.text_input('Url voor PitPit', '')
         submitted = st.form_submit_button("Submit")
         if submitted:
-            qry_insert_ingredient = "INSERT INTO Product (Product_Naam, Bulkkorting_content) VALUES (%s, %s)"
+            qry_insert_ingredient = "INSERT INTO Product (Product_Naam, Bulkkorting_content, Pitpit_url) VALUES (%s, %s, %s)"
             try:
-                query = run_query(qry_insert_ingredient, (textbox, bulkkorting_content))
+                query = run_query(qry_insert_ingredient, (textbox, bulkkorting_content, pitpit_url))
                 st.write(textbox, 'toegevoegd')
             except Exception as e:
                 st.write(e)
