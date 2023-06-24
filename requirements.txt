@@ -7,3 +7,7 @@ kivy-ios==2022.7.19
 pytz-deprecation-shim==0.1.0.post0
 matplotlib==3.5.1
 matplotlib-inline==0.1.3
+plotly-express==0.4.1
+seaborn==0.12.2
+seaborn==0.12.2
+
