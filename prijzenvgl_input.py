@@ -84,22 +84,16 @@ def selecteer_product():
             eenheid_unique = df["Eenheid"].unique()
             sns.set_style("darkgrid")
 
+            #print titel
+            st.title(select_product)
+
             # Divide the available space into multiple columns
             columns = st.columns(len(eenheid_unique))
             for i, x in enumerate(eenheid_unique):
                 fig, ax  = plt.subplots()
                 data_subset = df_simple[df_simple["Eenheid"] == x]
+
                 
-                g = sns.scatterplot(
-                    data = data_subset,
-                    x="Datum",
-                    y="Prijs",
-                    hue='Winkel',
-                    legend='full',
-                    marker='o',
-                    s=100,
-                    ax=ax
-                )
                 if len(data_subset) > 1:
                     g = sns.lineplot(
                         data=data_subset,
@@ -109,10 +103,26 @@ def selecteer_product():
                         legend='full',
                         ax=ax                        
                     )
+                    ax.set(ylim=0) 
+                    fig = g.figure
+                    g.set_xticklabels(g.get_xticklabels(), rotation = 30)
                     columns[i].pyplot(fig)
-            fig = g.figure
-            g.set_xticklabels(g.get_xticklabels(), rotation = 30)
-            st.pyplot(fig)
+                else:
+                    g = sns.scatterplot(
+                        data = data_subset,
+                        x="Datum",
+                        y="Prijs",
+                        hue='Winkel',
+                        legend='full',
+                        marker='o',
+                        s=100,
+                        ax=ax
+                    )
+                    ax.set(ylim=0) 
+                    fig = g.figure
+                    g.set_xticklabels(g.get_xticklabels(), rotation = 30)
+                    st.pyplot(fig)
+                    
             
         except Exception as e:
             st.write(e)
@@ -179,6 +189,7 @@ def voegtoe_prijs_winkel():
             try:
                 qry_insert_winkel_prijs = "INSERT INTO Product_Prijs_Winkel (Product_ID, Prijs, Prijs_eenheid, Bio, Voor_gewicht, Type, Winkel, Datum) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
                 run_query(qry_insert_winkel_prijs, (product_id, prijs, prijs_eenheid, bio, voor_gewicht, product_type, winkel_insert, datum_prijs))
+                st.write(product_id, ' ', prijs, ' ', prijs_eenheid, 'toegevoegd')
             except Exception as e:
                 st.write(e)
         except Exception as e:
@@ -189,11 +200,12 @@ def voegtoe_product():
         textbox = st.text_input('Product', '')
         bulkkorting_content = st.checkbox('Bulkkorting Content')
         pitpit_url = st.text_input('Url voor PitPit', '')
+        delhaize_url = st.text_input('Url voor Delhaize', '')
         submitted = st.form_submit_button("Submit")
         if submitted:
-            qry_insert_ingredient = "INSERT INTO Product (Product_Naam, Bulkkorting_content, Pitpit_url) VALUES (%s, %s, %s)"
+            qry_insert_ingredient = "INSERT INTO Product (Product_Naam, Bulkkorting_content, Pitpit_url, Delhaize_url) VALUES (%s, %s, %s, %s)"
             try:
-                query = run_query(qry_insert_ingredient, (textbox, bulkkorting_content, pitpit_url))
+                query = run_query(qry_insert_ingredient, (textbox, bulkkorting_content, pitpit_url, delhaize_url))
                 st.write(textbox, 'toegevoegd')
             except Exception as e:
                 st.write(e)
