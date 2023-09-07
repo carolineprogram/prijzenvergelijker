@@ -71,17 +71,21 @@ def selecteer_product():
             df['Prijs'] = df['Prijs'].astype(float)
             df_simple = df.copy()
             if len(df_simple["Voor_gewicht"]) > 0:
-                df_simple["Type + Gewicht"] = df["Type"] + ' - ' + df["Voor_gewicht"] + ' g'
+                bio = ""
+                if df_simple["Bio"].all():
+                    bio = "bio"
+                df_simple["Bio + Type + Gewicht"] = bio + df["Type"] + ' - ' + df["Voor_gewicht"] + ' g'
             else:
-                df_simple["Type + Gewicht"] = df["Type"] + ' - ' + df["Voor_gewicht"]
+                df_simple["Bio + Type + Gewicht"] = bio + df["Type"] + ' - ' + df["Voor_gewicht"]
             #Zoek meest recente prijs per winkel
-            df_laatste_prijs = df_simple.groupby(['Winkel', 'Eenheid', 'Bio', 'Type + Gewicht']).tail(1)
+            df_laatste_prijs = df_simple.groupby(['Winkel', 'Eenheid', 'Bio + Type + Gewicht']).tail(1)
             st.write(df_laatste_prijs)
 
-            colors = "bgrcmyk"
-
+            #colors = "bgrcmyk"
+            
             winkels_unique = df["Winkel"].unique()
             eenheid_unique = df["Eenheid"].unique()
+            biotypegewicht_unique = df_simple["Bio + Type + Gewicht"]
             sns.set_style("darkgrid")
 
             #print titel
@@ -89,40 +93,45 @@ def selecteer_product():
 
             # Divide the available space into multiple columns
             columns = st.columns(len(eenheid_unique))
-            for i, x in enumerate(eenheid_unique):
+
+            
+            # Loop through the data subsets for each "Eenheid" value
+            for i,x in enumerate(eenheid_unique):
                 fig, ax  = plt.subplots()
                 data_subset = df_simple[df_simple["Eenheid"] == x]
 
-                
-                if len(data_subset) > 1:
-                    g = sns.lineplot(
-                        data=data_subset,
-                        x="Datum",
-                        y="Prijs",
-                        hue='Winkel',
-                        legend='full',
-                        ax=ax                        
-                    )
-                    ax.set(ylim=0) 
-                    fig = g.figure
-                    g.set_xticklabels(g.get_xticklabels(), rotation = 30)
-                    columns[i].pyplot(fig)
-                else:
-                    g = sns.scatterplot(
-                        data = data_subset,
-                        x="Datum",
-                        y="Prijs",
-                        hue='Winkel',
-                        legend='full',
-                        marker='o',
-                        s=100,
-                        ax=ax
-                    )
-                    ax.set(ylim=0) 
-                    fig = g.figure
-                    g.set_xticklabels(g.get_xticklabels(), rotation = 30)
-                    st.pyplot(fig)
+                # Create a dictionary to store unique colors and line styles for each "btg"
+                btg_styles = {}
+
+                for w in winkels_unique:
+                    for btg in biotypegewicht_unique:
+                        data_subsubset = data_subset[(data_subset['Winkel'] == w) & (data_subset['Bio + Type + Gewicht'] == btg)]
+                      
+                        # Get a unique color and line style for the current "btg"
+                        if btg not in btg_styles:
+                            btg_styles[btg] = {
+                                'color': sns.color_palette("tab10")[len(btg_styles) % 10],
+                                'linestyle': '-' if len(btg_styles) % 2 == 0 else '--'  # Alternate between solid and dashed lines
+                            }
+
+                        
+                        if len(data_subsubset) > 0:
+                            plot_function = sns.lineplot if len(data_subsubset) > 1 else sns.scatterplot
+                            g = plot_function(
+                                    data=data_subsubset,
+                                    x="Datum",
+                                    y="Prijs",
+                                    label = btg,
+                                    color = btg_styles[btg]['color'],
+                                    linestyle=btg_styles[btg]['linestyle'],
+                                    marker = 'o',
+                                    ax=ax                        
+                            )
                     
+                ax.set(ylim=0) 
+                ax.set_xticklabels(ax.get_xticklabels(), rotation = 30)
+                sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
+                st.pyplot(fig)
             
         except Exception as e:
             st.write(e)
