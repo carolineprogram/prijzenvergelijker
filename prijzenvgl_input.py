@@ -119,7 +119,7 @@ def selecteer_product():
                             plot_function = sns.lineplot if len(data_subsubset) > 1 else sns.scatterplot
                             g = plot_function(
                                     data=data_subsubset,
-                                    x="Datum",
+                                    x=data_subsubset.index,
                                     y="Prijs",
                                     label = btg,
                                     color = btg_styles[btg]['color'],
@@ -127,7 +127,10 @@ def selecteer_product():
                                     marker = 'o',
                                     ax=ax                        
                             )
-                    
+                            # Add values in the area of the graph for the latest items (highest index)
+                            latest_data = data_subsubset.iloc[-1]
+                            ax.annotate(f"{latest_data['Prijs']:.2f}", (latest_data.name, latest_data['Prijs']), textcoords="offset points", xytext=(0, 10), ha='center')
+                                                        
                 ax.set(ylim=0) 
                 ax.set_xticklabels(ax.get_xticklabels(), rotation = 30)
                 sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
